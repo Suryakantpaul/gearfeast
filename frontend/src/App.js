@@ -4,6 +4,8 @@ import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import RestaurantDetail from './pages/RestaurantDetail';
+import OrderTracking from './pages/OrderTracking';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -21,6 +23,22 @@ const App = () => {
         element={
           <PrivateRoute>
             <Home />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/restaurant/:id"
+        element={
+          <PrivateRoute>
+            <RestaurantDetail />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/order/:id"
+        element={
+          <PrivateRoute>
+            <OrderTracking />
           </PrivateRoute>
         }
       />
