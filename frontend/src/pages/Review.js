@@ -7,35 +7,65 @@ const Review = () => {
   const navigate = useNavigate();
   const [text, setText] = useState('');
   const [rating, setRating] = useState(5);
+  const [hoveredStar, setHoveredStar] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(0);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+
+  const getWordCountColor = () => {
+    if (wordCount >= 50) return '#27AE60';
+    if (wordCount >= 25) return '#F39C12';
+    if (wordCount >= 10) return '#3498DB';
+    return '#999';
+  };
+
+  const getWordCountLabel = () => {
+    if (wordCount >= 50) return '🔥 Amazing review! Maximum points!';
+    if (wordCount >= 25) return '⭐ Great review! Almost there!';
+    if (wordCount >= 10) return '👍 Good start! Keep writing!';
+    return '✍️ Write at least 10 words to earn points';
+  };
+
+  const getProgressWidth = () => {
+    return Math.min((wordCount / 50) * 100, 100);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const res = await axiosInstance.post(`/reviews/${id}`, {
-        text,
-        rating,
-        hasMedia: false
+        text, rating, hasMedia: false
       });
       setPointsEarned(res.data.pointsEarned);
       setSubmitted(true);
     } catch (err) {
       setError('Failed to submit review. Try again.');
     }
+    setLoading(false);
   };
 
   if (submitted) {
     return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.successIcon}>🎉</div>
-          <h2 style={styles.successTitle}>Review Submitted!</h2>
-          <p style={styles.successText}>
-            You earned <strong style={{ color: '#E24B4A' }}>{pointsEarned} loyalty points!</strong>
+      <div style={styles.page}>
+        <div style={styles.successCard}>
+          <div style={styles.successAnimation}>🎉</div>
+          <h2 style={styles.successTitle}>Thank you!</h2>
+          <p style={styles.successSub}>Your review has been submitted</p>
+          <div style={styles.pointsBadge}>
+            <span style={styles.pointsIcon}>⭐</span>
+            <div>
+              <p style={styles.pointsLabel}>Points Earned</p>
+              <p style={styles.pointsValue}>+{pointsEarned} pts</p>
+            </div>
+          </div>
+          <p style={styles.successNote}>
+            Keep reviewing to earn more loyalty points and unlock exclusive offers!
           </p>
-          <button style={styles.button} onClick={() => navigate('/')}>
+          <button style={styles.homeBtn} onClick={() => navigate('/')}>
             Back to Home
           </button>
         </div>
@@ -44,122 +74,192 @@ const Review = () => {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>Leave a Review</h2>
-        <p style={styles.subtitle}>
-          Write a detailed review and earn loyalty points! ⭐
-        </p>
+    <div style={styles.page}>
+      <div style={styles.navbar}>
+        <button style={styles.backBtn} onClick={() => navigate('/')}>← Back</button>
+        <h2 style={styles.navTitle}>Rate your order</h2>
+        <div />
+      </div>
 
-        {error && <p style={styles.error}>{error}</p>}
-
-        <form onSubmit={handleSubmit}>
-          <div style={styles.ratingRow}>
-            <label style={styles.label}>Rating</label>
-            <div style={styles.stars}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  style={{
-                    fontSize: '32px',
-                    cursor: 'pointer',
-                    opacity: star <= rating ? 1 : 0.3
-                  }}
-                  onClick={() => setRating(star)}
-                >
-                  ⭐
-                </span>
-              ))}
+      <div style={styles.content}>
+        <div style={styles.card}>
+          {/* Header */}
+          <div style={styles.cardHeader}>
+            <span style={styles.headerIcon}>🍽️</span>
+            <div>
+              <h3 style={styles.cardTitle}>How was your experience?</h3>
+              <p style={styles.cardSub}>Your feedback helps others make better choices</p>
             </div>
           </div>
 
-          <label style={styles.label}>Your Review</label>
-          <textarea
-            style={styles.textarea}
-            placeholder="Describe your experience in detail... The more you write, the more points you earn!"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            required
-            rows={6}
-          />
+          {error && <div style={styles.errorBox}>{error}</div>}
 
-          <div style={styles.hint}>
-            <p style={styles.hintText}>
-              💡 Word count: {text.trim() === '' ? 0 : text.trim().split(/\s+/).length}
-            </p>
-            <p style={styles.hintText}>
-              {text.trim().split(/\s+/).length >= 50
-                ? '🔥 Maximum points!'
-                : text.trim().split(/\s+/).length >= 25
-                ? '⭐ Great review!'
-                : text.trim().split(/\s+/).length >= 10
-                ? '👍 Keep going!'
-                : '✍️ Write more to earn more points!'}
-            </p>
-          </div>
+          <form onSubmit={handleSubmit}>
+            {/* Star Rating */}
+            <div style={styles.ratingSection}>
+              <p style={styles.label}>Overall Rating</p>
+              <div style={styles.starsRow}>
+                {[1,2,3,4,5].map(star => (
+                  <span
+                    key={star}
+                    style={{
+                      fontSize: '40px',
+                      cursor: 'pointer',
+                      transition: 'transform 0.1s',
+                      transform: star <= (hoveredStar || rating) ? 'scale(1.2)' : 'scale(1)',
+                      filter: star <= (hoveredStar || rating) ? 'none' : 'grayscale(100%)'
+                    }}
+                    onMouseEnter={() => setHoveredStar(star)}
+                    onMouseLeave={() => setHoveredStar(0)}
+                    onClick={() => setRating(star)}
+                  >
+                    ⭐
+                  </span>
+                ))}
+              </div>
+              <p style={styles.ratingLabel}>
+                {rating === 5 ? 'Excellent!' : rating === 4 ? 'Good' : rating === 3 ? 'Average' : rating === 2 ? 'Poor' : 'Terrible'}
+              </p>
+            </div>
 
-          <button style={styles.button} type="submit">
-            Submit Review
-          </button>
-        </form>
+            {/* Review Text */}
+            <div style={styles.reviewSection}>
+              <p style={styles.label}>Write your review</p>
+              <textarea
+                style={styles.textarea}
+                placeholder="Tell us about your experience... Was the food delicious? Was delivery fast? Were the portions good?"
+                value={text}
+                onChange={e => setText(e.target.value)}
+                required
+                rows={6}
+              />
+
+              {/* Word count progress */}
+              <div style={styles.progressWrap}>
+                <div style={styles.progressBar}>
+                  <div style={{
+                    ...styles.progressFill,
+                    width: `${getProgressWidth()}%`,
+                    backgroundColor: getWordCountColor()
+                  }} />
+                </div>
+                <p style={{ ...styles.progressLabel, color: getWordCountColor() }}>
+                  {getWordCountLabel()} ({wordCount}/50 words)
+                </p>
+              </div>
+            </div>
+
+            {/* Points Preview */}
+            <div style={styles.pointsPreview}>
+              <div style={styles.pointsPreviewLeft}>
+                <span style={{ fontSize: '24px' }}>⭐</span>
+                <div>
+                  <p style={styles.pointsPreviewLabel}>You'll earn approximately</p>
+                  <p style={styles.pointsPreviewValue}>
+                    {Math.min(wordCount >= 50 ? 60 : wordCount >= 25 ? 30 : wordCount >= 10 ? 10 : 0, 60)} points
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              style={{
+                ...styles.submitBtn,
+                opacity: loading ? 0.7 : 1
+              }}
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Submit Review ✓'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '24px'
+  page: { minHeight: '100vh', backgroundColor: '#f8f8f8', fontFamily: "'Segoe UI', sans-serif" },
+  navbar: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 24px', backgroundColor: '#fff',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
   },
+  backBtn: {
+    backgroundColor: 'transparent', border: 'none',
+    color: '#E24B4A', fontSize: '15px', cursor: 'pointer', fontWeight: '600'
+  },
+  navTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 },
+  content: { maxWidth: '560px', margin: '0 auto', padding: '24px 16px' },
   card: {
-    backgroundColor: '#fff',
-    padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    width: '100%',
-    maxWidth: '500px'
+    backgroundColor: '#fff', borderRadius: '20px',
+    padding: '28px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)'
   },
-  title: { fontSize: '24px', color: '#333', margin: '0 0 8px' },
-  subtitle: { color: '#666', marginBottom: '24px', fontSize: '14px' },
-  error: { color: 'red', marginBottom: '12px' },
-  label: { display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#333' },
-  ratingRow: { marginBottom: '20px' },
-  stars: { display: 'flex', gap: '4px' },
+  cardHeader: { display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '24px' },
+  headerIcon: { fontSize: '48px' },
+  cardTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 4px' },
+  cardSub: { color: '#999', fontSize: '13px', margin: 0 },
+  errorBox: {
+    backgroundColor: '#fff5f5', color: '#E24B4A',
+    padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px'
+  },
+  ratingSection: { marginBottom: '24px' },
+  label: { fontWeight: '700', color: '#1a1a1a', marginBottom: '12px', fontSize: '15px' },
+  starsRow: { display: 'flex', gap: '8px', marginBottom: '8px' },
+  ratingLabel: { color: '#E24B4A', fontWeight: '700', fontSize: '16px', margin: 0 },
+  reviewSection: { marginBottom: '20px' },
   textarea: {
-    width: '100%',
-    padding: '12px',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    fontSize: '14px',
-    boxSizing: 'border-box',
-    resize: 'vertical',
-    marginBottom: '12px'
+    width: '100%', padding: '14px', borderRadius: '12px',
+    border: '1.5px solid #eee', fontSize: '14px',
+    boxSizing: 'border-box', resize: 'vertical',
+    outline: 'none', lineHeight: '1.6', color: '#333',
+    fontFamily: "'Segoe UI', sans-serif"
   },
-  hint: {
-    backgroundColor: '#fff5f5',
-    padding: '12px',
-    borderRadius: '8px',
-    marginBottom: '20px'
+  progressWrap: { marginTop: '12px' },
+  progressBar: {
+    height: '6px', backgroundColor: '#f0f0f0',
+    borderRadius: '3px', overflow: 'hidden', marginBottom: '8px'
   },
-  hintText: { margin: '4px 0', fontSize: '13px', color: '#666' },
-  button: {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#E24B4A',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '16px',
-    cursor: 'pointer'
+  progressFill: { height: '100%', borderRadius: '3px', transition: 'width 0.3s, background-color 0.3s' },
+  progressLabel: { fontSize: '13px', fontWeight: '600', margin: 0 },
+  pointsPreview: {
+    backgroundColor: '#fff5f5', borderRadius: '12px',
+    padding: '16px', marginBottom: '20px'
   },
-  successIcon: { fontSize: '64px', textAlign: 'center', marginBottom: '16px' },
-  successTitle: { textAlign: 'center', fontSize: '24px', color: '#333', marginBottom: '8px' },
-  successText: { textAlign: 'center', color: '#666', marginBottom: '24px' }
+  pointsPreviewLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
+  pointsPreviewLabel: { color: '#999', fontSize: '12px', margin: '0 0 2px' },
+  pointsPreviewValue: { color: '#E24B4A', fontSize: '20px', fontWeight: '800', margin: 0 },
+  submitBtn: {
+    width: '100%', padding: '16px',
+    backgroundColor: '#E24B4A', color: '#fff',
+    border: 'none', borderRadius: '12px',
+    fontSize: '16px', fontWeight: '700', cursor: 'pointer',
+    boxShadow: '0 4px 20px rgba(226,75,74,0.3)'
+  },
+  successCard: {
+    maxWidth: '400px', margin: '80px auto', backgroundColor: '#fff',
+    borderRadius: '24px', padding: '40px',
+    boxShadow: '0 4px 30px rgba(0,0,0,0.1)', textAlign: 'center'
+  },
+  successAnimation: { fontSize: '64px', marginBottom: '16px' },
+  successTitle: { fontSize: '28px', fontWeight: '800', color: '#1a1a1a', margin: '0 0 8px' },
+  successSub: { color: '#999', marginBottom: '24px' },
+  pointsBadge: {
+    display: 'flex', alignItems: 'center', gap: '12px',
+    backgroundColor: '#fff5f5', borderRadius: '16px',
+    padding: '16px 24px', marginBottom: '20px', justifyContent: 'center'
+  },
+  pointsIcon: { fontSize: '32px' },
+  pointsLabel: { color: '#999', fontSize: '13px', margin: '0 0 2px' },
+  pointsValue: { color: '#E24B4A', fontSize: '24px', fontWeight: '800', margin: 0 },
+  successNote: { color: '#999', fontSize: '13px', lineHeight: '1.6', marginBottom: '24px' },
+  homeBtn: {
+    width: '100%', padding: '14px',
+    backgroundColor: '#E24B4A', color: '#fff',
+    border: 'none', borderRadius: '12px',
+    fontSize: '15px', fontWeight: '700', cursor: 'pointer'
+  }
 };
 
 export default Review;
