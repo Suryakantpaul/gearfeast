@@ -15,6 +15,13 @@ const PrivateRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" />;
 };
 
+const RoleBasedHome = () => {
+  const { user } = useAuth();
+  if (user?.role === 'restaurant') return <Navigate to="/merchant" />;
+  if (user?.role === 'courier') return <Navigate to="/courier" />;
+  return <Home />;
+};
+
 const App = () => {
   return (
     <Routes>
@@ -24,7 +31,7 @@ const App = () => {
         path="/"
         element={
           <PrivateRoute>
-            <Home />
+            <RoleBasedHome />
           </PrivateRoute>
         }
       />
