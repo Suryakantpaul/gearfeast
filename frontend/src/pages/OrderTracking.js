@@ -6,12 +6,12 @@ import { io } from 'socket.io-client';
 const socket = io('http://localhost:8000');
 
 const STATUS_STEPS = [
-  { key: 'PENDING', label: 'Order Placed', icon: '📋', desc: 'Your order has been placed' },
-  { key: 'ACCEPTED', label: 'Order Accepted', icon: '✅', desc: 'Restaurant accepted your order' },
-  { key: 'ORDER_PREPARING', label: 'Preparing', icon: '👨‍🍳', desc: 'Chef is preparing your food' },
-  { key: 'COURIER_ASSIGNED', label: 'Courier Assigned', icon: '🚴', desc: 'Delivery partner assigned' },
-  { key: 'IN_TRANSIT', label: 'On The Way', icon: '🛵', desc: 'Your order is on the way' },
-  { key: 'DELIVERED', label: 'Delivered', icon: '🎉', desc: 'Enjoy your meal!' },
+  { key: 'PENDING',          label: 'Order placed',     icon: '📋', desc: 'Your order has been placed' },
+  { key: 'ACCEPTED',         label: 'Order accepted',   icon: '✅', desc: 'Restaurant accepted your order' },
+  { key: 'ORDER_PREPARING',  label: 'Preparing',        icon: '👨‍🍳', desc: 'Chef is preparing your food' },
+  { key: 'COURIER_ASSIGNED', label: 'Courier assigned', icon: '🚴', desc: 'Delivery partner assigned' },
+  { key: 'IN_TRANSIT',       label: 'On the way',       icon: '🛵', desc: 'Your order is en route' },
+  { key: 'DELIVERED',        label: 'Delivered',        icon: '🎉', desc: 'Enjoy your meal!' },
 ];
 
 const OrderTracking = () => {
@@ -24,9 +24,7 @@ const OrderTracking = () => {
     fetchOrder();
     socket.emit('joinOrder', id);
     socket.on('orderStatusUpdated', ({ orderId, status }) => {
-      if (orderId === id) {
-        setOrder((prev) => ({ ...prev, status }));
-      }
+      if (orderId === id) setOrder(prev => ({ ...prev, status }));
     });
     return () => { socket.off('orderStatusUpdated'); };
   }, [id]);
@@ -35,117 +33,145 @@ const OrderTracking = () => {
     try {
       const res = await axiosInstance.get(`/orders/${id}`);
       setOrder(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    } catch (err) { setLoading(false); }
+    }
   };
 
   const currentStep = order ? STATUS_STEPS.findIndex(s => s.key === order.status) : 0;
-  const currentStatus = STATUS_STEPS[currentStep];
+  const currentStatus = STATUS_STEPS[currentStep] ?? STATUS_STEPS[0];
 
   if (loading) return (
-    <div style={styles.loadingPage}>
-      <p style={{ fontSize: '48px' }}>🛵</p>
-      <p style={{ color: '#666' }}>Loading your order...</p>
+    <div style={s.loadingPage}>
+      <span style={{ fontSize: 48 }}>🛵</span>
+      <p style={{ color: '#888', marginTop: 12, fontFamily: "'DM Sans', sans-serif" }}>Loading your order...</p>
     </div>
   );
 
   return (
-    <div style={styles.page}>
+    <div style={s.page}>
+      {/* Google Fonts */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0e0e0e; }
+      `}</style>
+
       {/* Navbar */}
-      <div style={styles.navbar}>
-        <button style={styles.backBtn} onClick={() => navigate('/')}>← Home</button>
-        <h2 style={styles.navTitle}>Order Tracking</h2>
-        <span style={styles.orderId}>#{id.slice(-6)}</span>
+      <div style={s.navbar}>
+        <button style={s.backBtn} onClick={() => navigate('/')}>
+          ← Home
+        </button>
+        <span style={s.navTitle}>Tracking</span>
+        <span style={s.orderId}>#{id.slice(-6).toUpperCase()}</span>
       </div>
 
-      <div style={styles.content}>
-        {/* Status Hero */}
-        <div style={styles.statusHero}>
-          <div style={styles.statusIcon}>{currentStatus?.icon}</div>
-          <h2 style={styles.statusTitle}>{currentStatus?.label}</h2>
-          <p style={styles.statusDesc}>{currentStatus?.desc}</p>
+      {/* Status Hero */}
+      <div style={s.hero}>
+        <div style={s.iconRing}>{currentStatus.icon}</div>
+        <div>
+          <p style={s.heroLabel}>Current status</p>
+          <h1 style={s.heroTitle}>{currentStatus.label}</h1>
+          <p style={s.heroDesc}>{currentStatus.desc}</p>
           {order?.status !== 'DELIVERED' && (
-            <div style={styles.etaBox}>
-              <span style={styles.etaText}>⏱ Estimated time: 30-45 mins</span>
+            <div style={s.etaBox}>
+              <span style={s.etaDot} />
+              Est. 30–45 mins
             </div>
           )}
         </div>
+      </div>
 
+      <div style={s.body}>
         {/* Progress Steps */}
-        <div style={styles.stepsCard}>
+        <p style={s.sectionLabel}>Progress</p>
+        <div style={s.stepsWrap}>
           {STATUS_STEPS.map((step, index) => {
-            const isDone = index < currentStep;
+            const isDone   = index < currentStep;
             const isActive = index === currentStep;
+            const isLast   = index === STATUS_STEPS.length - 1;
+
             return (
-              <div key={step.key} style={styles.stepRow}>
-                <div style={styles.stepLeft}>
+              <div key={step.key} style={s.stepRow}>
+                {/* Left rail */}
+                <div style={s.stepLhs}>
                   <div style={{
-                    ...styles.stepDot,
-                    backgroundColor: isDone || isActive ? '#E24B4A' : '#eee',
-                    transform: isActive ? 'scale(1.2)' : 'scale(1)'
+                    ...s.dot,
+                    ...(isDone   ? s.dotDone   : {}),
+                    ...(isActive ? s.dotActive : {}),
+                    ...((!isDone && !isActive) ? s.dotInactive : {}),
                   }}>
                     {isDone ? '✓' : step.icon}
                   </div>
-                  {index < STATUS_STEPS.length - 1 && (
-                    <div style={{
-                      ...styles.stepConnector,
-                      backgroundColor: isDone ? '#E24B4A' : '#eee'
-                    }} />
+                  {!isLast && (
+                    <div style={{ ...s.connector, backgroundColor: isDone ? '#e63946' : 'rgba(255,255,255,0.08)' }} />
                   )}
                 </div>
-                <div style={styles.stepRight}>
+
+                {/* Right content */}
+                <div style={s.stepRhs}>
                   <p style={{
-                    ...styles.stepLabel,
-                    color: isDone || isActive ? '#1a1a1a' : '#bbb',
-                    fontWeight: isActive ? '700' : '500'
-                  }}>{step.label}</p>
-                  {isActive && (
-                    <p style={styles.stepSubLabel}>{step.desc}</p>
-                  )}
+                    ...s.stepLabel,
+                    color: (isDone || isActive) ? '#f0ede6' : '#444',
+                    fontWeight: isActive ? 600 : 400,
+                  }}>
+                    {step.label}
+                  </p>
+                  {isActive && <p style={s.stepSub}>{step.desc}</p>}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Order Details */}
+        {/* Order Summary */}
         {order && (
-          <div style={styles.orderCard}>
-            <h3 style={styles.cardTitle}>🧾 Order Summary</h3>
-            {order.items.map((item, i) => (
-              <div key={i} style={styles.itemRow}>
-                <span style={styles.itemQty}>{item.quantity}x</span>
-                <span style={styles.itemName}>{item.name}</span>
-                <span style={styles.itemPrice}>₹{item.price * item.quantity}</span>
+          <>
+            <p style={s.sectionLabel}>Order summary</p>
+            <div style={s.card}>
+              {order.items.map((item, i) => (
+                <div key={i} style={{
+                  ...s.itemRow,
+                  borderBottom: i < order.items.length - 1 ? '0.5px solid rgba(255,255,255,0.05)' : 'none',
+                }}>
+                  <span style={s.qty}>{item.quantity}×</span>
+                  <span style={s.itemName}>{item.name}</span>
+                  <span style={s.itemPrice}>₹{item.price * item.quantity}</span>
+                </div>
+              ))}
+              <div style={s.divider} />
+              <div style={s.totalRow}>
+                <span>Delivery</span>
+                <span style={{ color: '#4caf89', fontWeight: 500 }}>Free</span>
               </div>
-            ))}
-            <div style={styles.divider} />
-            <div style={styles.totalRow}>
-              <span>Delivery</span>
-              <span style={{ color: '#27AE60' }}>FREE</span>
+              <div style={{ ...s.totalRow, ...s.grandTotal }}>
+                <span>Total paid</span>
+                <span style={{ color: '#ff6b35' }}>₹{order.totalAmount}</span>
+              </div>
             </div>
-            <div style={{ ...styles.totalRow, fontWeight: '700', fontSize: '16px' }}>
-              <span>Total Paid</span>
-              <span style={{ color: '#E24B4A' }}>₹{order.totalAmount}</span>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Delivery Address */}
         {order?.deliveryAddress && (
-          <div style={styles.addressCard}>
-            <h3 style={styles.cardTitle}>📍 Delivery Address</h3>
-            <p style={styles.addressText}>
-              {order.deliveryAddress.street}, {order.deliveryAddress.city},
-              {order.deliveryAddress.state} - {order.deliveryAddress.pincode}
-            </p>
-          </div>
+          <>
+            <p style={s.sectionLabel}>Delivery address</p>
+            <div style={s.card}>
+              <p style={s.addrMeta}>Dropping off at</p>
+              <p style={s.addrText}>
+                {order.deliveryAddress.street}, {order.deliveryAddress.city},{' '}
+                {order.deliveryAddress.state} – {order.deliveryAddress.pincode}
+              </p>
+            </div>
+          </>
         )}
 
-        {/* Review Button */}
+        {/* Rate order */}
         {order?.status === 'DELIVERED' && (
-          <button style={styles.reviewBtn} onClick={() => navigate(`/review/${id}`)}>
-            ⭐ Rate your order & earn points!
+          <button style={s.reviewBtn} onClick={() => navigate(`/review/${id}`)}>
+            ⭐ Rate your order &amp; earn points
           </button>
         )}
       </div>
@@ -153,80 +179,130 @@ const OrderTracking = () => {
   );
 };
 
-const styles = {
-  page: { minHeight: '100vh', backgroundColor: '#f8f8f8', fontFamily: "'Segoe UI', sans-serif" },
-  loadingPage: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh' },
+/* ─── Styles ──────────────────────────────────────────────── */
+const s = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: '#0e0e0e',
+    color: '#f0ede6',
+    fontFamily: "'DM Sans', sans-serif",
+  },
+  loadingPage: {
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    height: '100vh', backgroundColor: '#0e0e0e',
+  },
+
+  /* Navbar */
   navbar: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '16px 24px', backgroundColor: '#fff',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 100
+    padding: '16px 20px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+    position: 'sticky', top: 0, zIndex: 100,
+    backgroundColor: '#0e0e0e',
   },
   backBtn: {
-    backgroundColor: 'transparent', border: 'none',
-    color: '#E24B4A', fontSize: '15px', cursor: 'pointer', fontWeight: '600'
+    background: 'rgba(255,255,255,0.06)',
+    border: '0.5px solid rgba(255,255,255,0.12)',
+    color: '#f0ede6', fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+    padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
   },
-  navTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a1a', margin: 0 },
-  orderId: { fontSize: '13px', color: '#999', fontWeight: '600' },
-  content: { maxWidth: '600px', margin: '0 auto', padding: '24px 16px' },
-  statusHero: {
-    backgroundColor: '#fff', borderRadius: '20px',
-    padding: '32px', textAlign: 'center',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.08)', marginBottom: '16px'
+  navTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 17, color: '#f0ede6',
   },
-  statusIcon: { fontSize: '56px', marginBottom: '12px' },
-  statusTitle: { fontSize: '24px', fontWeight: '800', color: '#1a1a1a', margin: '0 0 8px' },
-  statusDesc: { color: '#888', fontSize: '15px', margin: '0 0 16px' },
-  etaBox: {
-    display: 'inline-block', backgroundColor: '#fff5f5',
-    padding: '8px 20px', borderRadius: '20px'
+  orderId: { fontSize: 12, color: '#666', letterSpacing: '0.08em', fontWeight: 500 },
+
+  /* Hero */
+  hero: {
+    display: 'flex', gap: 16, alignItems: 'flex-start',
+    padding: '28px 20px 22px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.06)',
   },
-  etaText: { color: '#E24B4A', fontSize: '14px', fontWeight: '600' },
-  stepsCard: {
-    backgroundColor: '#fff', borderRadius: '20px',
-    padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)', marginBottom: '16px'
-  },
-  stepRow: { display: 'flex', gap: '16px', alignItems: 'flex-start' },
-  stepLeft: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  stepDot: {
-    width: '40px', height: '40px', borderRadius: '50%',
+  iconRing: {
+    width: 60, height: 60, borderRadius: '50%',
+    background: 'linear-gradient(135deg, #ff6b35, #e63946)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '18px', color: '#fff', flexShrink: 0,
-    transition: 'all 0.3s'
+    fontSize: 26, flexShrink: 0,
+    boxShadow: '0 0 0 8px rgba(230,57,70,0.12)',
   },
-  stepConnector: { width: '2px', height: '32px', margin: '4px 0' },
-  stepRight: { paddingTop: '8px', paddingBottom: '16px', flex: 1 },
-  stepLabel: { margin: '0 0 2px', fontSize: '15px' },
-  stepSubLabel: { color: '#E24B4A', fontSize: '13px', margin: 0 },
-  orderCard: {
-    backgroundColor: '#fff', borderRadius: '20px',
-    padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)', marginBottom: '16px'
+  heroLabel: {
+    fontSize: 11, color: '#666', letterSpacing: '0.1em',
+    textTransform: 'uppercase', fontWeight: 600, marginBottom: 4,
   },
-  cardTitle: { fontSize: '16px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 16px' },
-  itemRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' },
-  itemQty: {
-    backgroundColor: '#f0f0f0', color: '#333',
-    padding: '2px 8px', borderRadius: '6px',
-    fontSize: '13px', fontWeight: '700'
+  heroTitle: {
+    fontFamily: "'Playfair Display', serif",
+    fontSize: 28, color: '#f0ede6', lineHeight: 1.1, marginBottom: 6,
   },
-  itemName: { flex: 1, fontSize: '14px', color: '#333' },
-  itemPrice: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a' },
-  divider: { borderTop: '1px dashed #eee', margin: '16px 0' },
-  totalRow: {
-    display: 'flex', justifyContent: 'space-between',
-    fontSize: '14px', color: '#333', marginBottom: '8px'
+  heroDesc: { fontSize: 13, color: '#888', marginBottom: 14 },
+  etaBox: {
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+    background: 'rgba(255,107,53,0.1)',
+    border: '0.5px solid rgba(255,107,53,0.3)',
+    padding: '7px 14px', borderRadius: 20,
+    fontSize: 12, color: '#ff9966', fontWeight: 500,
   },
-  addressCard: {
-    backgroundColor: '#fff', borderRadius: '20px',
-    padding: '24px', boxShadow: '0 2px 16px rgba(0,0,0,0.08)', marginBottom: '16px'
+  etaDot: {
+    width: 6, height: 6, borderRadius: '50%',
+    backgroundColor: '#ff6b35', display: 'inline-block',
   },
-  addressText: { color: '#666', fontSize: '14px', margin: 0, lineHeight: '1.6' },
+
+  /* Body */
+  body: { padding: '22px 20px' },
+  sectionLabel: {
+    fontSize: 10, letterSpacing: '0.12em', color: '#555',
+    fontWeight: 600, textTransform: 'uppercase', marginBottom: 14,
+  },
+
+  /* Steps */
+  stepsWrap: { marginBottom: 28 },
+  stepRow: { display: 'flex', gap: 14, alignItems: 'flex-start' },
+  stepLhs: { display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 },
+  dot: {
+    width: 34, height: 34, borderRadius: '50%',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 15, transition: 'all 0.3s',
+  },
+  dotDone:    { background: '#e63946', color: '#fff', fontSize: 13, fontWeight: 700 },
+  dotActive:  { background: 'transparent', border: '2px solid #e63946', color: '#f0ede6', boxShadow: '0 0 0 5px rgba(230,57,70,0.15)' },
+  dotInactive:{ background: 'rgba(255,255,255,0.06)', color: '#333' },
+  connector:  { width: 1, height: 28, margin: '3px 0', transition: 'background 0.3s' },
+  stepRhs:    { paddingTop: 6, paddingBottom: 22, flex: 1 },
+  stepLabel:  { fontSize: 14, transition: 'color 0.3s' },
+  stepSub:    { fontSize: 12, color: '#ff9966', marginTop: 3 },
+
+  /* Card */
+  card: {
+    background: 'rgba(255,255,255,0.04)',
+    border: '0.5px solid rgba(255,255,255,0.08)',
+    borderRadius: 14, padding: '16px 18px', marginBottom: 20,
+  },
+  itemRow:   { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' },
+  qty: {
+    background: 'rgba(255,255,255,0.08)', color: '#ccc',
+    fontSize: 11, fontWeight: 600, padding: '3px 8px',
+    borderRadius: 6, minWidth: 28, textAlign: 'center',
+  },
+  itemName:  { flex: 1, fontSize: 13, color: '#ccc' },
+  itemPrice: { fontSize: 13, fontWeight: 500, color: '#f0ede6' },
+  divider:   { borderTop: '0.5px dashed rgba(255,255,255,0.1)', margin: '12px 0' },
+  totalRow:  { display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888', marginBottom: 8 },
+  grandTotal:{ fontSize: 15, fontWeight: 600, color: '#f0ede6' },
+
+  /* Address */
+  addrMeta: { fontSize: 11, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 },
+  addrText: { fontSize: 13, color: '#999', lineHeight: 1.7 },
+
+  /* Review button */
   reviewBtn: {
-    width: '100%', padding: '16px',
-    backgroundColor: '#E24B4A', color: '#fff',
-    border: 'none', borderRadius: '16px',
-    fontSize: '16px', fontWeight: '700', cursor: 'pointer',
-    boxShadow: '0 4px 20px rgba(226,75,74,0.3)'
-  }
+    width: '100%', padding: 15,
+    background: '#e63946', color: '#fff',
+    border: 'none', borderRadius: 12,
+    fontSize: 14, fontWeight: 600,
+    fontFamily: "'DM Sans', sans-serif",
+    cursor: 'pointer', letterSpacing: '0.02em',
+    marginTop: 4,
+  },
 };
 
 export default OrderTracking;
