@@ -6,37 +6,152 @@ import { io } from 'socket.io-client';
 
 const socket = io('http://localhost:8000');
 
-const STATUS_COLORS = {
-  PENDING: { bg: '#fff8e1', color: '#f59e0b', border: '#fcd34d' },
-  ACCEPTED: { bg: '#eff6ff', color: '#3b82f6', border: '#93c5fd' },
-  ORDER_PREPARING: { bg: '#f5f3ff', color: '#8b5cf6', border: '#c4b5fd' },
-  COURIER_ASSIGNED: { bg: '#ecfdf5', color: '#10b981', border: '#6ee7b7' },
-  IN_TRANSIT: { bg: '#fff7ed', color: '#f97316', border: '#fdba74' },
-  DELIVERED: { bg: '#f0fdf4', color: '#22c55e', border: '#86efac' },
-  CANCELLED: { bg: '#fef2f2', color: '#ef4444', border: '#fca5a5' }
+/* ─── Constants ──────────────────────────────────── */
+const STATUS_META = {
+  PENDING:          { label: 'Pending',          color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  dot: '#f59e0b' },
+  ACCEPTED:         { label: 'Accepted',          color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', dot: '#3b82f6' },
+  ORDER_PREPARING:  { label: 'Preparing',         color: '#a78bfa', bg: 'rgba(167,139,250,0.12)',dot: '#a78bfa' },
+  COURIER_ASSIGNED: { label: 'Courier Assigned',  color: '#34d399', bg: 'rgba(52,211,153,0.12)', dot: '#34d399' },
+  IN_TRANSIT:       { label: 'On the Way',        color: '#fb923c', bg: 'rgba(251,146,60,0.12)', dot: '#fb923c' },
+  DELIVERED:        { label: 'Delivered',         color: '#4ade80', bg: 'rgba(74,222,128,0.12)', dot: '#4ade80' },
+  CANCELLED:        { label: 'Cancelled',         color: '#f87171', bg: 'rgba(248,113,113,0.12)',dot: '#f87171' },
 };
 
 const NEXT_STATUS = {
-  PENDING: 'ACCEPTED',
-  ACCEPTED: 'ORDER_PREPARING',
-  ORDER_PREPARING: 'COURIER_ASSIGNED',
+  PENDING:          'ACCEPTED',
+  ACCEPTED:         'ORDER_PREPARING',
+  ORDER_PREPARING:  'COURIER_ASSIGNED',
   COURIER_ASSIGNED: 'IN_TRANSIT',
-  IN_TRANSIT: 'DELIVERED'
+  IN_TRANSIT:       'DELIVERED',
 };
 
 const STATUS_ACTIONS = {
-  PENDING: { label: 'Accept Order', icon: '✅' },
-  ACCEPTED: { label: 'Start Preparing', icon: '👨‍🍳' },
-  ORDER_PREPARING: { label: 'Assign Courier', icon: '🚴' },
-  COURIER_ASSIGNED: { label: 'Out for Delivery', icon: '🛵' },
-  IN_TRANSIT: { label: 'Mark Delivered', icon: '🎉' }
+  PENDING:          { label: 'Accept Order',      icon: '✅' },
+  ACCEPTED:         { label: 'Start Preparing',   icon: '👨‍🍳' },
+  ORDER_PREPARING:  { label: 'Assign Courier',    icon: '🚴' },
+  COURIER_ASSIGNED: { label: 'Out for Delivery',  icon: '🛵' },
+  IN_TRANSIT:       { label: 'Mark Delivered',    icon: '🎉' },
 };
 
+const TABS = ['ALL', 'PENDING', 'ACCEPTED', 'ORDER_PREPARING', 'IN_TRANSIT', 'DELIVERED'];
+
+const TAB_LABELS = {
+  ALL: 'All',
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  ORDER_PREPARING: 'Preparing',
+  IN_TRANSIT: 'In Transit',
+  DELIVERED: 'Delivered',
+};
+
+/* ─── Helpers ────────────────────────────────────── */
+const fmtTime = (iso) =>
+  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const fmtDate = (iso) =>
+  new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+
+const initials = (name = '') =>
+  name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+/* ─── Sub-components ─────────────────────────────── */
+const StatCard = ({ label, value, accent, icon }) => (
+  <div style={{ ...s.statCard, '--accent': accent }}>
+    <div style={{ ...s.statIconBox, background: `${accent}18` }}>
+      <span style={{ fontSize: 20 }}>{icon}</span>
+    </div>
+    <div>
+      <p style={{ ...s.statVal, color: accent }}>{value}</p>
+      <p style={s.statLbl}>{label}</p>
+    </div>
+    <div style={{ ...s.statAccentBar, background: accent }} />
+  </div>
+);
+
+const OrderCard = ({ order, updatingId, onUpdate }) => {
+  const meta     = STATUS_META[order.status] || STATUS_META.PENDING;
+  const next     = NEXT_STATUS[order.status];
+  const action   = STATUS_ACTIONS[order.status];
+  const isUpdating = updatingId === order._id;
+
+  return (
+    <div style={s.orderCard}>
+      {/* Card top strip */}
+      <div style={{ ...s.cardStrip, background: meta.color }} />
+
+      {/* Header */}
+      <div style={s.cardHead}>
+        <div>
+          <span style={s.orderId}>#{order._id.slice(-6).toUpperCase()}</span>
+          <span style={s.orderTime}>{fmtDate(order.createdAt)} · {fmtTime(order.createdAt)}</span>
+        </div>
+        <span style={{ ...s.badge, color: meta.color, background: meta.bg }}>
+          <span style={{ ...s.badgeDot, background: meta.dot }} />
+          {meta.label}
+        </span>
+      </div>
+
+      {/* Customer */}
+      <div style={s.customerRow}>
+        <div style={{ ...s.avatar, background: `${meta.color}22`, color: meta.color }}>
+          {initials(order.customer?.name)}
+        </div>
+        <div>
+          <p style={s.custName}>{order.customer?.name || 'Customer'}</p>
+          <p style={s.custEmail}>{order.customer?.email || '—'}</p>
+        </div>
+      </div>
+
+      {/* Items */}
+      <div style={s.itemsBox}>
+        {order.items.map((item, i) => (
+          <div key={i} style={s.itemRow}>
+            <span style={s.itemQty}>{item.quantity}×</span>
+            <span style={s.itemName}>{item.name}</span>
+            <span style={s.itemPrice}>₹{item.price * item.quantity}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Address */}
+      {order.deliveryAddress && (
+        <div style={s.addrRow}>
+          <span style={{ fontSize: 13 }}>📍</span>
+          <span style={s.addrText}>
+            {order.deliveryAddress.street}, {order.deliveryAddress.city}
+          </span>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div style={s.cardFoot}>
+        <div style={s.totalBox}>
+          <span style={s.totalLbl}>Total</span>
+          <span style={s.totalAmt}>₹{order.totalAmount}</span>
+        </div>
+
+        {next && action ? (
+          <button
+            style={{ ...s.actionBtn, opacity: isUpdating ? 0.65 : 1 }}
+            onClick={() => onUpdate(order._id, next)}
+            disabled={isUpdating}
+          >
+            {isUpdating ? 'Updating…' : `${action.icon} ${action.label}`}
+          </button>
+        ) : order.status === 'DELIVERED' ? (
+          <div style={s.doneTag}>✅ Completed</div>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Main Component ─────────────────────────────── */
 const MerchantDashboard = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate         = useNavigate();
+  const [orders, setOrders]       = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
   const [updatingId, setUpdatingId] = useState(null);
 
@@ -52,8 +167,11 @@ const MerchantDashboard = () => {
     try {
       const res = await axiosInstance.get('/orders/myorders');
       setOrders(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    } catch (err) { setLoading(false); }
+    }
   };
 
   const updateStatus = async (orderId, status) => {
@@ -61,204 +179,123 @@ const MerchantDashboard = () => {
     try {
       await axiosInstance.put(`/orders/${orderId}/status`, { status });
       setOrders(prev => prev.map(o => o._id === orderId ? { ...o, status } : o));
-    } catch (err) { console.error(err); }
-    setUpdatingId(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
-  const TABS = ['ALL', 'PENDING', 'ACCEPTED', 'ORDER_PREPARING', 'IN_TRANSIT', 'DELIVERED'];
-
-  const filteredOrders = activeTab === 'ALL'
-    ? orders
-    : orders.filter(o => o.status === activeTab);
-
-  const totalRevenue = orders
-    .filter(o => o.status === 'DELIVERED')
-    .reduce((sum, o) => sum + o.totalAmount, 0);
-
+  const filtered     = activeTab === 'ALL' ? orders : orders.filter(o => o.status === activeTab);
+  const totalRevenue = orders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + o.totalAmount, 0);
   const pendingCount = orders.filter(o => o.status === 'PENDING').length;
-  const activeCount = orders.filter(o => ['ACCEPTED', 'ORDER_PREPARING', 'COURIER_ASSIGNED', 'IN_TRANSIT'].includes(o.status)).length;
+  const activeCount  = orders.filter(o => ['ACCEPTED','ORDER_PREPARING','COURIER_ASSIGNED','IN_TRANSIT'].includes(o.status)).length;
 
   return (
-    <div style={styles.page}>
-      {/* Navbar */}
-      <nav style={styles.navbar}>
-        <div style={styles.navLeft}>
-          <span style={styles.logo}>⚙️ GearFeast</span>
-          <span style={styles.merchantBadge}>Merchant Portal</span>
+    <div style={s.page}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { height: 4px; width: 4px; background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-dot {
+          0%,100% { opacity: 1; }
+          50%      { opacity: 0.4; }
+        }
+      `}</style>
+
+      {/* ── Navbar ── */}
+      <nav style={s.navbar}>
+        <div style={s.navLeft}>
+          <div style={s.logoMark}>G</div>
+          <span style={s.logoText}>GearFeast</span>
+          <span style={s.portalTag}>Merchant</span>
         </div>
-        <div style={styles.navRight}>
-          <div style={styles.userInfo}>
-            <div style={styles.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
-            <span style={styles.userName}>{user?.name}</span>
+
+        <div style={s.navCenter}>
+          <div style={s.liveDot} />
+          <span style={s.liveText}>Live Dashboard</span>
+        </div>
+
+        <div style={s.navRight}>
+          <div style={s.userChip}>
+            <div style={s.userAvatar}>{initials(user?.name)}</div>
+            <span style={s.userName}>{user?.name}</span>
           </div>
-          <button style={styles.logoutBtn} onClick={() => { logout(); navigate('/login'); }}>
-            Logout
+          <button
+            style={s.logoutBtn}
+            onClick={() => { logout(); navigate('/login'); }}
+          >
+            Sign out
           </button>
         </div>
       </nav>
 
-      <div style={styles.content}>
-        {/* Stats Cards */}
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.statIcon}>📦</div>
-            <div>
-              <p style={styles.statNum}>{orders.length}</p>
-              <p style={styles.statLabel}>Total Orders</p>
-            </div>
-          </div>
-          <div style={{ ...styles.statCard, borderLeft: '4px solid #f59e0b' }}>
-            <div style={{ ...styles.statIcon, backgroundColor: '#fff8e1' }}>⏳</div>
-            <div>
-              <p style={{ ...styles.statNum, color: '#f59e0b' }}>{pendingCount}</p>
-              <p style={styles.statLabel}>Pending</p>
-            </div>
-          </div>
-          <div style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
-            <div style={{ ...styles.statIcon, backgroundColor: '#eff6ff' }}>🔥</div>
-            <div>
-              <p style={{ ...styles.statNum, color: '#3b82f6' }}>{activeCount}</p>
-              <p style={styles.statLabel}>Active</p>
-            </div>
-          </div>
-          <div style={{ ...styles.statCard, borderLeft: '4px solid #22c55e' }}>
-            <div style={{ ...styles.statIcon, backgroundColor: '#f0fdf4' }}>💰</div>
-            <div>
-              <p style={{ ...styles.statNum, color: '#22c55e' }}>₹{totalRevenue}</p>
-              <p style={styles.statLabel}>Revenue</p>
-            </div>
-          </div>
+      {/* ── Body ── */}
+      <div style={s.body}>
+
+        {/* Stats */}
+        <div style={s.statsGrid}>
+          <StatCard label="Total Orders"   value={orders.length}   accent="#e63946" icon="📦" />
+          <StatCard label="Pending"        value={pendingCount}    accent="#f59e0b" icon="⏳" />
+          <StatCard label="Active"         value={activeCount}     accent="#3b82f6" icon="🔥" />
+          <StatCard label="Revenue"        value={`₹${totalRevenue}`} accent="#4ade80" icon="💰" />
         </div>
 
         {/* Tabs */}
-        <div style={styles.tabsWrap}>
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              style={{
-                ...styles.tab,
-                backgroundColor: activeTab === tab ? '#E24B4A' : '#fff',
-                color: activeTab === tab ? '#fff' : '#666',
-                border: activeTab === tab ? 'none' : '1px solid #eee'
-              }}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === 'ALL' ? 'All Orders' : tab.replace(/_/g, ' ')}
-              {tab !== 'ALL' && (
+        <div style={s.tabsRow}>
+          {TABS.map(tab => {
+            const count  = tab === 'ALL' ? orders.length : orders.filter(o => o.status === tab).length;
+            const active = tab === activeTab;
+            const meta   = STATUS_META[tab];
+            return (
+              <button
+                key={tab}
+                style={{
+                  ...s.tab,
+                  ...(active ? {
+                    background: tab === 'ALL' ? '#e63946' : meta?.color,
+                    color: '#fff',
+                    border: 'none',
+                  } : {}),
+                }}
+                onClick={() => setActiveTab(tab)}
+              >
+                {TAB_LABELS[tab]}
                 <span style={{
-                  ...styles.tabCount,
-                  backgroundColor: activeTab === tab ? 'rgba(255,255,255,0.3)' : '#f0f0f0',
-                  color: activeTab === tab ? '#fff' : '#999'
+                  ...s.tabCount,
+                  background: active ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.07)',
+                  color: active ? '#fff' : '#666',
                 }}>
-                  {orders.filter(o => o.status === tab).length}
+                  {count}
                 </span>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Orders */}
+        {/* Orders grid */}
         {loading ? (
-          <div style={styles.loadingBox}>
-            <p style={{ fontSize: '48px' }}>📦</p>
-            <p style={{ color: '#999' }}>Loading orders...</p>
+          <div style={s.centered}>
+            <span style={{ fontSize: 48 }}>📦</span>
+            <p style={{ color: '#555', marginTop: 12, fontFamily: "'DM Sans', sans-serif" }}>Loading orders…</p>
           </div>
-        ) : filteredOrders.length === 0 ? (
-          <div style={styles.emptyBox}>
-            <p style={{ fontSize: '48px' }}>🎉</p>
-            <p style={styles.emptyText}>No orders in this category</p>
+        ) : filtered.length === 0 ? (
+          <div style={s.centered}>
+            <span style={{ fontSize: 48 }}>🎉</span>
+            <p style={{ color: '#555', marginTop: 12, fontFamily: "'DM Sans', sans-serif" }}>No orders here yet</p>
           </div>
         ) : (
-          <div style={styles.ordersGrid}>
-            {filteredOrders.map(order => {
-              const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS.PENDING;
-              const nextStatus = NEXT_STATUS[order.status];
-              const action = STATUS_ACTIONS[order.status];
-
-              return (
-                <div key={order._id} style={styles.orderCard}>
-                  {/* Card Header */}
-                  <div style={styles.cardHeader}>
-                    <div style={styles.cardHeaderLeft}>
-                      <span style={styles.orderNum}>#{order._id.slice(-6).toUpperCase()}</span>
-                      <span style={styles.orderTime}>
-                        {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div style={{
-                      ...styles.statusBadge,
-                      backgroundColor: statusStyle.bg,
-                      color: statusStyle.color,
-                      border: `1px solid ${statusStyle.border}`
-                    }}>
-                      {order.status.replace(/_/g, ' ')}
-                    </div>
-                  </div>
-
-                  {/* Customer */}
-                  <div style={styles.customerRow}>
-                    <div style={styles.customerAvatar}>
-                      {order.customer?.name?.charAt(0).toUpperCase() || 'C'}
-                    </div>
-                    <div>
-                      <p style={styles.customerName}>{order.customer?.name || 'Customer'}</p>
-                      <p style={styles.customerEmail}>{order.customer?.email || ''}</p>
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div style={styles.itemsList}>
-                    {order.items.map((item, i) => (
-                      <div key={i} style={styles.itemRow}>
-                        <span style={styles.itemQty}>{item.quantity}x</span>
-                        <span style={styles.itemName}>{item.name}</span>
-                        <span style={styles.itemPrice}>₹{item.price * item.quantity}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Total */}
-                  <div style={styles.totalRow}>
-                    <span style={styles.totalLabel}>Total Amount</span>
-                    <span style={styles.totalAmount}>₹{order.totalAmount}</span>
-                  </div>
-
-                  {/* Delivery Address */}
-                  {order.deliveryAddress && (
-                    <div style={styles.addressRow}>
-                      <span style={styles.addressIcon}>📍</span>
-                      <span style={styles.addressText}>
-                        {order.deliveryAddress.street}, {order.deliveryAddress.city}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Action Button */}
-                  {nextStatus && action && (
-                    <button
-                      style={{
-                        ...styles.actionBtn,
-                        opacity: updatingId === order._id ? 0.7 : 1
-                      }}
-                      onClick={() => updateStatus(order._id, nextStatus)}
-                      disabled={updatingId === order._id}
-                    >
-                      {updatingId === order._id ? (
-                        'Updating...'
-                      ) : (
-                        <>{action.icon} {action.label}</>
-                      )}
-                    </button>
-                  )}
-
-                  {order.status === 'DELIVERED' && (
-                    <div style={styles.deliveredBadge}>
-                      ✅ Order Completed
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div style={s.grid}>
+            {filtered.map((order, i) => (
+              <div key={order._id} style={{ animation: `fadeUp 0.35s ease ${i * 0.05}s both` }}>
+                <OrderCard order={order} updatingId={updatingId} onUpdate={updateStatus} />
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -266,119 +303,233 @@ const MerchantDashboard = () => {
   );
 };
 
-const styles = {
-  page: { minHeight: '100vh', backgroundColor: '#f8f8f8', fontFamily: "'Segoe UI', sans-serif" },
+/* ─── Styles ──────────────────────────────────────── */
+const s = {
+  /* Page */
+  page: {
+    minHeight: '100vh',
+    background: '#0a0a0a',
+    fontFamily: "'DM Sans', sans-serif",
+    color: '#f0ede6',
+  },
+
+  /* Navbar */
   navbar: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 32px', backgroundColor: '#fff',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-    position: 'sticky', top: 0, zIndex: 100
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 32px',
+    height: 64,
+    background: '#111',
+    borderBottom: '0.5px solid rgba(255,255,255,0.07)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 200,
   },
-  navLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  logo: { color: '#E24B4A', fontSize: '22px', fontWeight: '800' },
-  merchantBadge: {
-    backgroundColor: '#fff5f5', color: '#E24B4A',
-    padding: '4px 12px', borderRadius: '20px',
-    fontSize: '12px', fontWeight: '700',
-    border: '1px solid #ffd0d0'
-  },
-  navRight: { display: 'flex', alignItems: 'center', gap: '16px' },
-  userInfo: { display: 'flex', alignItems: 'center', gap: '10px' },
-  avatar: {
-    width: '36px', height: '36px', borderRadius: '50%',
-    backgroundColor: '#E24B4A', color: '#fff',
+  navLeft: { display: 'flex', alignItems: 'center', gap: 10 },
+  logoMark: {
+    width: 32, height: 32, borderRadius: 8,
+    background: '#e63946',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontWeight: '700', fontSize: '15px'
+    fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 15, color: '#fff',
   },
-  userName: { fontSize: '14px', fontWeight: '600', color: '#333' },
+  logoText: {
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 800, fontSize: 17, color: '#f0ede6', letterSpacing: '-0.02em',
+  },
+  portalTag: {
+    fontSize: 10, fontWeight: 600, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: '#e63946',
+    background: 'rgba(230,57,70,0.1)',
+    border: '0.5px solid rgba(230,57,70,0.25)',
+    padding: '3px 9px', borderRadius: 20,
+  },
+  navCenter: { display: 'flex', alignItems: 'center', gap: 7 },
+  liveDot: {
+    width: 7, height: 7, borderRadius: '50%',
+    background: '#4ade80',
+    animation: 'pulse-dot 2s ease-in-out infinite',
+  },
+  liveText: { fontSize: 12, color: '#555', letterSpacing: '0.04em' },
+  navRight: { display: 'flex', alignItems: 'center', gap: 14 },
+  userChip: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    background: 'rgba(255,255,255,0.05)',
+    border: '0.5px solid rgba(255,255,255,0.08)',
+    padding: '5px 12px 5px 5px', borderRadius: 30,
+  },
+  userAvatar: {
+    width: 28, height: 28, borderRadius: '50%',
+    background: '#e63946', color: '#fff',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 11, fontWeight: 700, flexShrink: 0,
+  },
+  userName: { fontSize: 13, color: '#ccc', fontWeight: 500 },
   logoutBtn: {
-    padding: '7px 16px', backgroundColor: 'transparent',
-    color: '#E24B4A', border: '1.5px solid #E24B4A',
-    borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600'
+    background: 'transparent',
+    border: '0.5px solid rgba(255,255,255,0.12)',
+    color: '#888', fontSize: 13, padding: '7px 14px',
+    borderRadius: 8, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+    transition: 'color 0.2s',
   },
-  content: { maxWidth: '1200px', margin: '0 auto', padding: '24px 32px' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
+
+  /* Body */
+  body: { maxWidth: 1280, margin: '0 auto', padding: '28px 32px' },
+
+  /* Stats */
+  statsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: 16, marginBottom: 24,
+  },
   statCard: {
-    backgroundColor: '#fff', borderRadius: '16px',
-    padding: '20px 24px', display: 'flex', gap: '16px',
-    alignItems: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    borderLeft: '4px solid #E24B4A'
+    background: '#151515',
+    border: '0.5px solid rgba(255,255,255,0.07)',
+    borderRadius: 16, padding: '18px 20px',
+    display: 'flex', alignItems: 'center', gap: 14,
+    position: 'relative', overflow: 'hidden',
   },
-  statIcon: {
-    width: '48px', height: '48px', borderRadius: '12px',
-    backgroundColor: '#fff5f5', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', fontSize: '24px'
+  statIconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
-  statNum: { fontSize: '24px', fontWeight: '800', color: '#E24B4A', margin: '0 0 2px' },
-  statLabel: { fontSize: '13px', color: '#999', margin: 0 },
-  tabsWrap: { display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '24px', paddingBottom: '4px' },
+  statVal: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 22, fontWeight: 800, margin: '0 0 2px', letterSpacing: '-0.02em',
+  },
+  statLbl: { fontSize: 12, color: '#555', fontWeight: 400 },
+  statAccentBar: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 2, borderRadius: '0 0 16px 16px', opacity: 0.6,
+  },
+
+  /* Tabs */
+  tabsRow: {
+    display: 'flex', gap: 6, overflowX: 'auto',
+    marginBottom: 24, paddingBottom: 2,
+  },
   tab: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '8px 16px', borderRadius: '20px',
-    cursor: 'pointer', fontSize: '13px', fontWeight: '600',
-    whiteSpace: 'nowrap', transition: 'all 0.2s'
+    display: 'flex', alignItems: 'center', gap: 6,
+    padding: '7px 14px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '0.5px solid rgba(255,255,255,0.08)',
+    borderRadius: 20, cursor: 'pointer',
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13, fontWeight: 500, color: '#888',
+    whiteSpace: 'nowrap', transition: 'all 0.2s',
   },
   tabCount: {
-    padding: '2px 8px', borderRadius: '10px',
-    fontSize: '11px', fontWeight: '700'
+    fontSize: 11, fontWeight: 600,
+    padding: '2px 7px', borderRadius: 10,
   },
-  loadingBox: { textAlign: 'center', padding: '80px' },
-  emptyBox: { textAlign: 'center', padding: '80px' },
-  emptyText: { color: '#999', fontSize: '16px' },
-  ordersGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px,1fr))', gap: '20px' },
+
+  /* Grid */
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: 18,
+  },
+  centered: {
+    textAlign: 'center', padding: '80px 0',
+  },
+
+  /* Order Card */
   orderCard: {
-    backgroundColor: '#fff', borderRadius: '16px',
-    padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)'
+    background: '#151515',
+    border: '0.5px solid rgba(255,255,255,0.07)',
+    borderRadius: 16, overflow: 'hidden',
+    display: 'flex', flexDirection: 'column',
+    transition: 'border-color 0.2s',
   },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  cardHeaderLeft: { display: 'flex', flexDirection: 'column', gap: '2px' },
-  orderNum: { fontSize: '16px', fontWeight: '800', color: '#1a1a1a' },
-  orderTime: { fontSize: '12px', color: '#999' },
-  statusBadge: {
-    padding: '5px 12px', borderRadius: '20px',
-    fontSize: '11px', fontWeight: '700'
+  cardStrip: { height: 3, width: '100%' },
+  cardHead: {
+    display: 'flex', alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: '14px 16px 0',
   },
-  customerRow: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', padding: '12px', backgroundColor: '#f8f8f8', borderRadius: '10px' },
-  customerAvatar: {
-    width: '36px', height: '36px', borderRadius: '50%',
-    backgroundColor: '#E24B4A', color: '#fff',
+  orderId: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 15, fontWeight: 800, color: '#f0ede6',
+    display: 'block', letterSpacing: '-0.01em',
+  },
+  orderTime: {
+    fontSize: 11, color: '#555', display: 'block', marginTop: 2,
+  },
+  badge: {
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    padding: '4px 10px', borderRadius: 20,
+    fontSize: 11, fontWeight: 600,
+  },
+  badgeDot: {
+    width: 5, height: 5, borderRadius: '50%',
+    animation: 'pulse-dot 2s ease-in-out infinite',
+  },
+
+  /* Customer */
+  customerRow: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '12px 16px',
+    borderBottom: '0.5px solid rgba(255,255,255,0.05)',
+  },
+  avatar: {
+    width: 34, height: 34, borderRadius: '50%',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontWeight: '700', fontSize: '14px', flexShrink: 0
+    fontSize: 12, fontWeight: 700, flexShrink: 0,
   },
-  customerName: { fontSize: '14px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 2px' },
-  customerEmail: { fontSize: '12px', color: '#999', margin: 0 },
-  itemsList: { marginBottom: '12px' },
-  itemRow: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' },
+  custName: { fontSize: 13, fontWeight: 500, color: '#e0e0e0', marginBottom: 1 },
+  custEmail: { fontSize: 11, color: '#555' },
+
+  /* Items */
+  itemsBox: { padding: '12px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.05)' },
+  itemRow: {
+    display: 'flex', alignItems: 'center', gap: 8,
+    marginBottom: 8,
+  },
   itemQty: {
-    backgroundColor: '#f0f0f0', color: '#333',
-    padding: '2px 8px', borderRadius: '6px',
-    fontSize: '12px', fontWeight: '700', flexShrink: 0
+    background: 'rgba(255,255,255,0.08)', color: '#aaa',
+    fontSize: 11, fontWeight: 600,
+    padding: '2px 7px', borderRadius: 5,
+    flexShrink: 0,
   },
-  itemName: { flex: 1, fontSize: '14px', color: '#333' },
-  itemPrice: { fontSize: '14px', fontWeight: '600', color: '#1a1a1a' },
-  totalRow: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '12px',
-    backgroundColor: '#f8f8f8', borderRadius: '10px', marginBottom: '12px'
+  itemName: { flex: 1, fontSize: 13, color: '#aaa' },
+  itemPrice: { fontSize: 13, fontWeight: 500, color: '#f0ede6' },
+
+  /* Address */
+  addrRow: {
+    display: 'flex', gap: 6, alignItems: 'flex-start',
+    padding: '8px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.05)',
   },
-  totalLabel: { fontSize: '13px', color: '#666', fontWeight: '600' },
-  totalAmount: { fontSize: '18px', fontWeight: '800', color: '#E24B4A' },
-  addressRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' },
-  addressIcon: { fontSize: '14px' },
-  addressText: { fontSize: '13px', color: '#666' },
+  addrText: { fontSize: 12, color: '#555', lineHeight: 1.5 },
+
+  /* Footer */
+  cardFoot: {
+    display: 'flex', alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '12px 16px', gap: 10,
+  },
+  totalBox: { display: 'flex', flexDirection: 'column', gap: 1 },
+  totalLbl: { fontSize: 10, color: '#555', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 },
+  totalAmt: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: 18, fontWeight: 800, color: '#e63946', letterSpacing: '-0.02em',
+  },
   actionBtn: {
-    width: '100%', padding: '14px',
-    background: 'linear-gradient(135deg, #E24B4A, #ff6b6b)',
-    color: '#fff', border: 'none', borderRadius: '12px',
-    fontSize: '14px', fontWeight: '700', cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(226,75,74,0.3)',
-    transition: 'all 0.2s'
+    flex: 1, padding: '10px 14px',
+    background: '#e63946', color: '#fff',
+    border: 'none', borderRadius: 10,
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    transition: 'opacity 0.2s',
+    letterSpacing: '0.01em',
   },
-  deliveredBadge: {
-    textAlign: 'center', padding: '12px',
-    backgroundColor: '#f0fdf4', color: '#22c55e',
-    borderRadius: '12px', fontWeight: '700', fontSize: '14px'
-  }
+  doneTag: {
+    flex: 1, padding: '10px 0',
+    background: 'rgba(74,222,128,0.1)',
+    border: '0.5px solid rgba(74,222,128,0.2)',
+    color: '#4ade80', borderRadius: 10,
+    fontSize: 12, fontWeight: 600, textAlign: 'center',
+  },
 };
 
 export default MerchantDashboard;
