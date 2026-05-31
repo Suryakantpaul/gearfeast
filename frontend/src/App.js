@@ -8,6 +8,7 @@ import RestaurantDetail from './pages/RestaurantDetail';
 import OrderTracking from './pages/OrderTracking';
 import Review from './pages/Review';
 import MerchantDashboard from './pages/MerchantDashboard';
+import MyOrders from './pages/MyOrders';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -64,6 +65,14 @@ const App = () => {
         element={
           <PrivateRoute>
             <MerchantDashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/myorders"
+        element={
+          <PrivateRoute>
+            <MyOrders />
           </PrivateRoute>
         }
       />
