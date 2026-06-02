@@ -9,6 +9,7 @@ import OrderTracking from './pages/OrderTracking';
 import Review from './pages/Review';
 import MerchantDashboard from './pages/MerchantDashboard';
 import MyOrders from './pages/MyOrders';
+import Profile from './pages/Profile';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -76,6 +77,14 @@ const App = () => {
           </PrivateRoute>
         }
       />
+      <Route
+  path="/profile"
+  element={
+    <PrivateRoute>
+      <Profile />
+    </PrivateRoute>
+  }
+/>
     </Routes>
   );
 };

@@ -35,6 +35,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [banner, setBanner] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
   const bannerRef = useRef();
 
   useEffect(() => {
@@ -91,12 +92,41 @@ const Home = () => {
           />
         </div>
         <div style={styles.navRight}>
-          <span style={styles.points}>⭐ {user?.loyaltyPoints || 0} pts</span>
-          <div style={styles.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
-          <button style={styles.logoutBtn} onClick={() => { logout(); navigate('/login'); }}>
-            Logout
-          </button>
+  <button style={styles.ordersBtn} onClick={() => navigate('/myorders')}>
+    📦 My Orders
+  </button>
+  <div style={styles.profileWrap}>
+    <div style={styles.avatar} onClick={() => setShowDropdown(!showDropdown)}>
+      {user?.name?.charAt(0).toUpperCase()}
+    </div>
+    {showDropdown && (
+      <div style={styles.dropdown}>
+        <div style={styles.dropdownHeader}>
+          <div style={styles.dropdownAvatar}>{user?.name?.charAt(0).toUpperCase()}</div>
+          <div>
+            <p style={styles.dropdownName}>{user?.name}</p>
+            <p style={styles.dropdownEmail}>{user?.email}</p>
+          </div>
         </div>
+        <div style={styles.dropdownDivider} />
+        <div style={styles.dropdownItem} onClick={() => navigate('/myorders')}>
+          📦 My Orders
+        </div>
+        <div style={styles.dropdownItem} onClick={() => { setShowDropdown(false); navigate('/profile'); }}>
+  👤 My Profile
+</div>
+        <div style={styles.dropdownItem}>
+          ⭐ {user?.loyaltyPoints || 0} Loyalty Points
+        </div>
+        <div style={styles.dropdownDivider} />
+        <div style={{ ...styles.dropdownItem, color: '#E24B4A' }}
+          onClick={() => { logout(); navigate('/login'); }}>
+          🚪 Logout
+        </div>
+      </div>
+    )}
+  </div>
+</div>
       </nav>
 
       <div style={styles.content}>
@@ -345,7 +375,44 @@ const styles = {
     padding: '10px 24px', backgroundColor: '#E24B4A',
     color: '#fff', border: 'none', borderRadius: '8px',
     cursor: 'pointer', fontWeight: '600'
-  }
+  },
+
+  ordersBtn: {
+  padding: '7px 16px', backgroundColor: '#fff5f5',
+  color: '#E24B4A', border: '1.5px solid #E24B4A',
+  borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600'
+},
+profileWrap: { position: 'relative' },
+dropdown: {
+  position: 'absolute', top: '48px', right: 0,
+  backgroundColor: '#fff', borderRadius: '16px',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+  width: '240px', zIndex: 1000,
+  border: '1px solid #f0f0f0', overflow: 'hidden'
+},
+dropdownHeader: {
+  display: 'flex', alignItems: 'center', gap: '12px',
+  padding: '16px'
+},
+dropdownAvatar: {
+  width: '44px', height: '44px', borderRadius: '50%',
+  backgroundColor: '#E24B4A', color: '#fff',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontWeight: '700', fontSize: '18px', flexShrink: 0
+},
+dropdownName: { fontSize: '15px', fontWeight: '700', color: '#1a1a1a', margin: '0 0 2px' },
+dropdownEmail: { fontSize: '12px', color: '#999', margin: 0 },
+dropdownDivider: { height: '1px', backgroundColor: '#f0f0f0' },
+dropdownItem: {
+  padding: '14px 16px', fontSize: '14px',
+  color: '#333', cursor: 'pointer', fontWeight: '500',
+  transition: 'background 0.2s'
+},
+ordersBtn: {
+  padding: '7px 16px', backgroundColor: '#fff5f5',
+  color: '#E24B4A', border: '1.5px solid #E24B4A',
+  borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600'
+},
 };
 
 export default Home;
