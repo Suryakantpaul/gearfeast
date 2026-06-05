@@ -67,6 +67,23 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+
+const getRestaurantOrders = async (req, res) => {
+  try {
+    const restaurants = await require('../models/Restaurant').find({ owner: req.user._id });
+    const restaurantIds = restaurants.map(r => r._id);
+    
+    const orders = await Order.find({ restaurant: { $in: restaurantIds } })
+      .populate('customer', 'name email')
+      .populate('restaurant', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,

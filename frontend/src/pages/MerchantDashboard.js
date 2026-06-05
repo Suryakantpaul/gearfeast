@@ -165,7 +165,7 @@ const MerchantDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await axiosInstance.get('/orders/myorders');
+      const res = await axiosInstance.get('/orders/restaurant-orders');
       setOrders(res.data);
     } catch (err) {
       console.error(err);
