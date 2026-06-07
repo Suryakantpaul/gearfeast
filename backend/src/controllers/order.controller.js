@@ -88,5 +88,6 @@ module.exports = {
   createOrder,
   getMyOrders,
   getOrderById,
-  updateOrderStatus
+  updateOrderStatus,
+  getRestaurantOrders
 };
