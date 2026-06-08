@@ -11,6 +11,7 @@ import Review from './pages/Review';
 import MerchantDashboard from './pages/MerchantDashboard';
 import MyOrders from './pages/MyOrders';
 import Profile from './pages/Profile';
+import TableBooking from './pages/TableBooking';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -87,6 +88,14 @@ const App = () => {
   }
 />
 <Route path="/landing" element={<Landing />} />
+<Route
+  path="/booking/:id"
+  element={
+    <PrivateRoute>
+      <TableBooking />
+    </PrivateRoute>
+  }
+/>
     </Routes>
   );
 };

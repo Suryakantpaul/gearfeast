@@ -37,6 +37,7 @@ const RestaurantDetail = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeTab, setActiveTab] = useState('delivery');
 
   useEffect(() => {
     fetchRestaurant();
@@ -119,8 +120,40 @@ const RestaurantDetail = () => {
             <span style={styles.badge}>⭐ {restaurant?.rating || '4.2'}</span>
             <span style={styles.badge}>{restaurant?.isOpen ? '🟢 Open' : '🔴 Closed'}</span>
             <span style={styles.badge}>🛵 Free delivery</span>
+            <button
+              style={styles.bookTableBtn}
+              onClick={() => navigate(`/booking/${id}`)}
+            >
+              🍽️ Book a Table
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Delivery / Dine In Tabs */}
+      <div style={styles.tabsBar}>
+        <button
+          style={{
+            ...styles.tabBtn,
+            backgroundColor: activeTab === 'delivery' ? '#E24B4A' : '#fff',
+            color: activeTab === 'delivery' ? '#fff' : '#333',
+            border: activeTab === 'delivery' ? 'none' : '1.5px solid #eee'
+          }}
+          onClick={() => setActiveTab('delivery')}
+        >
+          🛵 Delivery
+        </button>
+        <button
+          style={{
+            ...styles.tabBtn,
+            backgroundColor: activeTab === 'dinein' ? '#E24B4A' : '#fff',
+            color: activeTab === 'dinein' ? '#fff' : '#333',
+            border: activeTab === 'dinein' ? 'none' : '1.5px solid #eee'
+          }}
+          onClick={() => { setActiveTab('dinein'); navigate(`/booking/${id}`); }}
+        >
+          🍽️ Dine In
+        </button>
       </div>
 
       <div style={styles.body}>
@@ -250,11 +283,26 @@ const styles = {
   headerContent: { position: 'absolute', bottom: '24px', left: '24px' },
   restName: { color: '#fff', fontSize: '32px', fontWeight: '800', margin: '0 0 4px' },
   restCuisine: { color: 'rgba(255,255,255,0.8)', margin: '0 0 12px', fontSize: '15px' },
-  headerBadges: { display: 'flex', gap: '8px' },
+  headerBadges: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff',
     padding: '4px 12px', borderRadius: '20px', fontSize: '13px',
     backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.2)'
+  },
+  bookTableBtn: {
+    padding: '8px 20px', backgroundColor: '#fff',
+    color: '#E24B4A', border: 'none',
+    borderRadius: '20px', cursor: 'pointer',
+    fontWeight: '700', fontSize: '14px'
+  },
+  tabsBar: {
+    display: 'flex', gap: '12px', padding: '16px 24px',
+    backgroundColor: '#fff', borderBottom: '1px solid #eee'
+  },
+  tabBtn: {
+    padding: '10px 24px', borderRadius: '20px',
+    cursor: 'pointer', fontSize: '14px', fontWeight: '700',
+    transition: 'all 0.2s'
   },
   body: { display: 'flex', gap: '24px', padding: '24px', maxWidth: '1200px', margin: '0 auto', alignItems: 'flex-start' },
   menuSection: { flex: 1 },
