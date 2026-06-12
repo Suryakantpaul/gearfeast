@@ -10,6 +10,7 @@ const orderRoutes = require('./routes/order.routes');
 const reviewRoutes = require('./routes/review.routes');
 const menuItemRoutes = require('./routes/menuItem.routes');
 const setupSocket = require('./sockets/orderSocket');
+const tableBookingRoutes = require('./routes/tableBooking.routes');
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/restaurants/:restaurantId/menu', menuItemRoutes);
+app.use('/api/bookings', tableBookingRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'GearFeast API is running!' });
