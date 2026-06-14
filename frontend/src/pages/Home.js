@@ -118,6 +118,9 @@ const Home = () => {
         <div style={styles.dropdownItem}>
           ⭐ {user?.loyaltyPoints || 0} Loyalty Points
         </div>
+        <div style={styles.dropdownItem} onClick={() => { setShowDropdown(false); navigate('/mybookings'); }}>
+  🍽️ My Bookings
+</div>
         <div style={styles.dropdownDivider} />
         <div style={{ ...styles.dropdownItem, color: '#E24B4A' }}
           onClick={() => { logout(); navigate('/login'); }}>

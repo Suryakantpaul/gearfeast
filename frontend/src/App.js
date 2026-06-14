@@ -12,6 +12,8 @@ import MerchantDashboard from './pages/MerchantDashboard';
 import MyOrders from './pages/MyOrders';
 import Profile from './pages/Profile';
 import TableBooking from './pages/TableBooking';
+import MyBookings from './pages/MyBookings';
+import Payment from './pages/Payment';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -93,6 +95,22 @@ const App = () => {
   element={
     <PrivateRoute>
       <TableBooking />
+    </PrivateRoute>
+  }
+/>
+<Route
+  path="/mybookings"
+  element={
+    <PrivateRoute>
+      <MyBookings />
+    </PrivateRoute>
+  }
+/>
+<Route
+  path="/payment"
+  element={
+    <PrivateRoute>
+      <Payment />
     </PrivateRoute>
   }
 />

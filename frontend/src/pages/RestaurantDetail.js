@@ -80,16 +80,14 @@ const RestaurantDetail = () => {
   const getTotalAmount = () => cart.reduce((t, i) => t + i.price * i.quantity, 0);
   const getTotalItems = () => cart.reduce((t, i) => t + i.quantity, 0);
 
-  const placeOrder = async () => {
-    try {
-      const res = await axiosInstance.post('/orders', {
-        restaurant: id,
-        items: cart.map(i => ({ menuItem: i._id, name: i.name, price: i.price, quantity: i.quantity })),
-        totalAmount: getTotalAmount(),
-        deliveryAddress: { street: '456 Park Street', city: 'Durgapur', state: 'West Bengal', pincode: '713201' }
-      });
-      navigate(`/order/${res.data._id}`);
-    } catch (err) { console.error(err); }
+const placeOrder = () => {
+    navigate('/payment', {
+      state: {
+        cart,
+        restaurantId: id,
+        totalAmount: getTotalAmount()
+      }
+    });
   };
 
   const categories = ['All', ...new Set(menuItems.map(i => i.category))];
