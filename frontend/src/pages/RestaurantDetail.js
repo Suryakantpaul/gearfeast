@@ -379,4 +379,3 @@ const styles = {
 };
 
 export default RestaurantDetail;
-<span style={styles.statNum}>10+</span>
