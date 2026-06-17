@@ -34,8 +34,7 @@ const Home = () => {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ veg: false, topRated: false, fast: false, open: false });
-const [sortBy, setSortBy] = useState('default');
+  const [banner, setBanner] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const bannerRef = useRef();
 
@@ -67,17 +66,10 @@ const [sortBy, setSortBy] = useState('default');
     }
   };
 
-  let filtered = restaurants.filter(r =>
-  r.name.toLowerCase().includes(search.toLowerCase()) ||
-  r.cuisine.toLowerCase().includes(search.toLowerCase())
-);
-
-if (filters.topRated) filtered = filtered.filter(r => (r.rating || 4.2) >= 4);
-if (filters.open) filtered = filtered.filter(r => r.isOpen);
-if (filters.fast) filtered = filtered.filter(r => r.deliveryTime?.includes('30'));
-
-if (sortBy === 'rating') filtered = [...filtered].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-if (sortBy === 'distance') filtered = [...filtered].sort((a, b) => (a.distance || 0) - (b.distance || 0));
+  const filtered = restaurants.filter(r =>
+    r.name.toLowerCase().includes(search.toLowerCase()) ||
+    r.cuisine.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div style={styles.page}>
@@ -179,66 +171,14 @@ if (sortBy === 'distance') filtered = [...filtered].sort((a, b) => (a.distance |
           </div>
         </div>
 
-        {/* Filters */}
-<div style={styles.filtersRow}>
-  <div style={styles.filterGroup}>
-    <button
-      style={{
-        ...styles.filterChip,
-        backgroundColor: filters.veg ? '#E24B4A' : '#fff',
-        color: filters.veg ? '#fff' : '#333',
-        border: filters.veg ? 'none' : '1.5px solid #eee'
-      }}
-      onClick={() => setFilters(f => ({ ...f, veg: !f.veg }))}
-    >
-      🟢 Pure Veg
-    </button>
-    <button
-      style={{
-        ...styles.filterChip,
-        backgroundColor: filters.topRated ? '#E24B4A' : '#fff',
-        color: filters.topRated ? '#fff' : '#333',
-        border: filters.topRated ? 'none' : '1.5px solid #eee'
-      }}
-      onClick={() => setFilters(f => ({ ...f, topRated: !f.topRated }))}
-    >
-      ⭐ Top Rated
-    </button>
-    <button
-      style={{
-        ...styles.filterChip,
-        backgroundColor: filters.fast ? '#E24B4A' : '#fff',
-        color: filters.fast ? '#fff' : '#333',
-        border: filters.fast ? 'none' : '1.5px solid #eee'
-      }}
-      onClick={() => setFilters(f => ({ ...f, fast: !f.fast }))}
-    >
-      ⚡ Fast Delivery
-    </button>
-    <button
-      style={{
-        ...styles.filterChip,
-        backgroundColor: filters.open ? '#E24B4A' : '#fff',
-        color: filters.open ? '#fff' : '#333',
-        border: filters.open ? 'none' : '1.5px solid #eee'
-      }}
-      onClick={() => setFilters(f => ({ ...f, open: !f.open }))}
-    >
-      🟢 Open Now
-    </button>
-  </div>
-
-  <select
-    style={styles.sortSelect}
-    value={sortBy}
-    onChange={e => setSortBy(e.target.value)}
-  >
-    <option value="default">Sort by</option>
-    <option value="rating">Rating</option>
-    <option value="distance">Distance</option>
-    <option value="delivery">Delivery Time</option>
-  </select>
-</div>
+        {/* Offers Strip */}
+        <div style={styles.offersStrip}>
+          <div style={styles.offerChip}>🔥 Trending</div>
+          <div style={styles.offerChip}>⚡ Fast Delivery</div>
+          <div style={styles.offerChip}>🎉 New on GearFeast</div>
+          <div style={styles.offerChip}>💚 Pure Veg</div>
+          <div style={styles.offerChip}>⭐ Top Rated</div>
+        </div>
 
         {/* Restaurants */}
         <div style={styles.section}>
@@ -475,22 +415,6 @@ ordersBtn: {
   padding: '7px 16px', backgroundColor: '#fff5f5',
   color: '#E24B4A', border: '1.5px solid #E24B4A',
   borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600'
-},
-filtersRow: {
-  display: 'flex', justifyContent: 'space-between',
-  alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '12px'
-},
-filterGroup: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
-filterChip: {
-  padding: '8px 18px', borderRadius: '20px',
-  cursor: 'pointer', fontSize: '13px', fontWeight: '600',
-  whiteSpace: 'nowrap', transition: 'all 0.2s'
-},
-sortSelect: {
-  padding: '8px 16px', borderRadius: '20px',
-  border: '1.5px solid #eee', fontSize: '13px',
-  fontWeight: '600', color: '#333', outline: 'none',
-  cursor: 'pointer', backgroundColor: '#fff'
 },
 };
 
